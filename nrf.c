@@ -77,6 +77,7 @@ static ssize_t nrf_write(struct file *fp, const char *data, size_t len, loff_t *
 	return len;
 }
 
+
 /* Displays NRF module register info*/
 static ssize_t nrf_read(struct file *fp, char *buf, size_t len, loff_t *offset){
 	
@@ -211,7 +212,7 @@ static int reg_spi_device(void)
 /******************************
  Module initialization function
 ******************************/
-static int __init hello_init(void)
+static int __init nrf_init(void)
 {
 	int retval = 0;
 
@@ -227,8 +228,7 @@ static int __init hello_init(void)
 
 
 	radio_init();
-	nrf_set_retrans_delay(15);
-	nrf_set_retrans_count(15);
+	nrf_set_speed(SPEED_250Kbps);
 
 	return 0;
 	
@@ -239,7 +239,7 @@ static int __init hello_init(void)
 /******************************
  Module exit function
 ******************************/
-static void __exit hello_exit(void)
+static void __exit nrf_exit(void)
 {
 	printk(KERN_ALERT "Bye from module!!\n");
 	
@@ -252,8 +252,8 @@ static void __exit hello_exit(void)
 }
 
 
-module_init(hello_init);
-module_exit(hello_exit);
+module_init(nrf_init);
+module_exit(nrf_exit);
 module_param_array(address,uint,NULL,0);
 
 
