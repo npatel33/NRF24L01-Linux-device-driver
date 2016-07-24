@@ -24,10 +24,10 @@
 #define SPEED_2Mbps 1
 #define SPEED_250Kbps 4
 
-#define POWER_-18DB 0
-#define POWER_-12DB 1
-#define POWER_-6DB 2
-#define POWER_-0DB 3
+#define POWER_18DB 0
+#define POWER_12DB 1
+#define POWER_6DB 2
+#define POWER_0DB 3
 
 
 void radio_init(void);
@@ -42,5 +42,15 @@ int nrf_set_speed(uint8_t speed);
 int nrf_set_power(uint8_t power);
 int nrf_set_rx_addr(uint8_t *val, uint8_t pipe);
 void nrf_set_tx_addr(uint8_t *val);
+int nrf_set_rx_width(uint8_t width, uint8_t pipe);
+int is_tx_full(void);
+int is_tx_empty(void);
+int is_rx_full(void);
+int is_rx_empty(void);
+void nrf_enable_dynpd(uint8_t pipe);
+void nrf_power_up(void);
+void nrf_power_down(void);
+void nrf_set_as_recv(void);
+void nrf_set_as_trans(void);
 
 #endif

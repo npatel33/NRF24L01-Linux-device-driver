@@ -11,7 +11,7 @@ extern struct GpioRegisters *GpioRegisters_s;
 ******************************/
 void radio_init(void)
 {
-	uint8_t ret;
+	//uint8_t ret;
 
 	GpioRegisters_s = (struct GpioRegisters *)__io_address(GPIO_BASE);
 	
@@ -23,11 +23,165 @@ void radio_init(void)
 
 
 /******************************
+ Set module in transmitter mode
+******************************/
+void nrf_set_as_trans(void)
+{
+	uint8_t *val;
+
+	val = nrf_xfer(CONFIG,1,NULL,R);
+	val[0] &= ~(1<<PRIM_RX);
+
+	nrf_xfer(CONFIG,1,&val[0],W);
+}
+
+
+/******************************
+ Set module in receiver mode
+******************************/
+void nrf_set_as_recv(void)
+{
+	uint8_t *val;
+
+	val = nrf_xfer(CONFIG,1,NULL,R);
+	val[0] |= (1<<PRIM_RX);
+
+	nrf_xfer(CONFIG,1,&val[0],W);
+}
+
+
+/******************************
+ Power down nrf module
+******************************/
+void nrf_power_down(void)
+{
+	uint8_t *val;
+
+	val = nrf_xfer(CONFIG,1,NULL,R);
+	val[0] &= ~(1<<PWR_UP);
+
+	nrf_xfer(CONFIG,1,&val[0],W);
+
+}
+
+/******************************
+ Power up nrf module
+******************************/
+void nrf_power_up(void)
+{
+	uint8_t *val;
+
+	val = nrf_xfer(CONFIG,1,NULL,R);
+	val[0] |= (1<<PWR_UP);
+
+	nrf_xfer(CONFIG,1,&val[0],W);
+
+}
+
+
+/******************************
+ Enables Dynamic payload length on data pipes.
+
+ e.g :
+ nrf_enable_dynpd(DATA_PIPE_0 | DATA_PIPE_1);
+ turns on data AA on pipe 0 & pipe 1
+******************************/
+void nrf_enable_dynpd(uint8_t pipe)
+{
+	nrf_xfer(DYNPD,1,&pipe,W);
+}
+
+/******************************
+ checks whether RX FIFO is empty or not
+******************************/
+int is_rx_empty(void)
+{
+	if(nrf_xfer(FIFO_STATUS,1,NULL,R) && RX_EMPTY)
+		return 1;
+	else
+		return 0;
+}
+
+/******************************
+ checks whether RX FIFO is full or not
+******************************/
+int is_rx_full(void)
+{
+	if(nrf_xfer(FIFO_STATUS,1,NULL,R) && RX_FULL)
+		return 1;
+	else
+		return 0;
+}
+
+
+/******************************
+ checks whether TX FIFO is empty or not
+******************************/
+int is_tx_empty(void)
+{
+	if(nrf_xfer(FIFO_STATUS,1,NULL,R) && TX_EMPTY)
+		return 1;
+	else
+		return 0;
+}
+
+
+/******************************
+ checks whether TX FIFO is full or not
+******************************/
+int is_tx_full(void)
+{
+	if(nrf_xfer(FIFO_STATUS,1,NULL,R) && TX_FULL)
+		return 1;
+	else
+		return 0;
+}
+
+/******************************
+ sets RX payload width
+******************************/
+int nrf_set_rx_width(uint8_t width, uint8_t pipe)
+{
+	uint8_t cmd;
+
+	if(width > 32)
+		return -1;
+	if(pipe > 5)
+		return -1;
+
+	cmd = RX_PW_P0 + pipe;
+
+	switch(pipe){
+
+		case 0:
+			nrf_xfer(cmd, 1, &width, W);
+			break;
+		case 1:
+			nrf_xfer(cmd, 1, &width, W);
+			break;
+		case 2:
+			nrf_xfer(cmd, 1, &width, W);
+			break;
+		case 3:
+			nrf_xfer(cmd, 1, &width, W);
+			break;
+		case 4:
+			nrf_xfer(cmd, 1, &width, W);
+			break;
+		case 5:
+			nrf_xfer(cmd, 1, &width, W);
+			break;
+	}
+	return 0;
+}
+
+/******************************
  sets TX address (5 bytes)
 ******************************/
 void nrf_set_tx_addr(uint8_t *val)
 {
 	nrf_xfer(TX_ADDR, 5, val, W);
+
 }
 
 
