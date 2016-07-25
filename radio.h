@@ -30,9 +30,9 @@
 #define POWER_0DB 3
 
 
-void radio_init(void);
+int radio_init(void);
 uint8_t *nrf_xfer(uint8_t reg, size_t count, uint8_t *val, bool op);
-void nrf_set_AA(uint8_t pipe);
+void nrf_enable_AA(uint8_t pipe);
 void nrf_enable_pipes(uint8_t pipe);
 int nrf_set_retrans_delay(uint8_t delay);
 int nrf_set_addr_width(uint8_t width);

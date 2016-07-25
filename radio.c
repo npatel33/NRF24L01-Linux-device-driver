@@ -9,15 +9,64 @@ extern struct GpioRegisters *GpioRegisters_s;
 /******************************
  Initializes radio
 ******************************/
-void radio_init(void)
+int radio_init(void)
 {
-	//uint8_t ret;
+	int result;
+	uint8_t addr[5] = {0x12,0x12,0x12,0x12,0x12};
 
 	GpioRegisters_s = (struct GpioRegisters *)__io_address(GPIO_BASE);
 	
 	//keep CE low
 	SetGPIOFunction(NRF_CE,1);
 	SetGPIOOutputValue(NRF_CE,0);
+
+	nrf_enable_AA(DATA_PIPE_0);
+	nrf_enable_pipes(DATA_PIPE_0);
+
+	result = nrf_set_addr_width(5);
+	if(result){
+		printk(KERN_ALERT "Error: setting addr width failed!\n");
+		goto out;
+	}
+
+	result = nrf_set_channel(1);
+	if(result){
+		printk(KERN_ALERT "Error: setting RF channel freq!\n");
+		goto out;
+	}
+
+	result = nrf_set_speed(SPEED_1Mbps);
+	if(result){
+		printk(KERN_ALERT "Error: setting transmission speed!\n");
+		goto out;
+	}
+
+	result = nrf_set_power(POWER_0DB);
+	if(result){
+		printk(KERN_ALERT "Error: setting radio power!\n");
+		goto out;
+	}
+
+	result = nrf_set_rx_addr(addr,0);
+	if(result){
+		printk(KERN_ALERT "Error: setting rx address!\n");
+		goto out;
+	}
+
+	nrf_set_tx_addr(addr);
+
+	result = nrf_set_rx_width(1,0);
+	if(result){
+		printk(KERN_ALERT "Error: setting pipe width!\n");
+		goto out;
+	}
+
+	nrf_power_up();
+	nrf_set_as_recv();
+	return 0;
+
+	out:
+	return result;
 
 }
 
@@ -28,11 +77,14 @@ void radio_init(void)
 void nrf_set_as_trans(void)
 {
 	uint8_t *val;
+	uint8_t temp;
 
 	val = nrf_xfer(CONFIG,1,NULL,R);
-	val[0] &= ~(1<<PRIM_RX);
+	temp = val[0];
 
-	nrf_xfer(CONFIG,1,&val[0],W);
+	temp &= ~(1<<PRIM_RX);
+
+	nrf_xfer(CONFIG,1,&temp,W);
 }
 
 
@@ -42,11 +94,14 @@ void nrf_set_as_trans(void)
 void nrf_set_as_recv(void)
 {
 	uint8_t *val;
+	uint8_t temp;
 
 	val = nrf_xfer(CONFIG,1,NULL,R);
-	val[0] |= (1<<PRIM_RX);
+	temp = val[0];
 
-	nrf_xfer(CONFIG,1,&val[0],W);
+	temp |= (1<<PRIM_RX);
+
+	nrf_xfer(CONFIG,1,&temp,W);
 }
 
 
@@ -56,11 +111,14 @@ void nrf_set_as_recv(void)
 void nrf_power_down(void)
 {
 	uint8_t *val;
+	uint8_t temp;
 
 	val = nrf_xfer(CONFIG,1,NULL,R);
-	val[0] &= ~(1<<PWR_UP);
+	temp = val[0];
 
-	nrf_xfer(CONFIG,1,&val[0],W);
+	temp &= ~(1<<PWR_UP);
+
+	nrf_xfer(CONFIG,1,&temp,W);
 
 }
 
@@ -70,11 +128,14 @@ void nrf_power_down(void)
 void nrf_power_up(void)
 {
 	uint8_t *val;
+	uint8_t temp;
 
 	val = nrf_xfer(CONFIG,1,NULL,R);
-	val[0] |= (1<<PWR_UP);
+	temp = val[0];
 
-	nrf_xfer(CONFIG,1,&val[0],W);
+	temp |= (1<<PWR_UP);
+
+	nrf_xfer(CONFIG,1,&temp,W);
 
 }
 
@@ -233,15 +294,37 @@ int nrf_set_power(uint8_t power)
 {
 	
 	uint8_t *val;
+	uint8_t temp;
 
 	if(power > 3)
 		return -1;
 	
 	val = nrf_xfer(RF_SETUP, 1, NULL, R);
+	temp = val[0];
 	
-	power = power | val[0];
+	switch(power){
 
-	nrf_xfer(RF_SETUP, 1, &power, W);
+	case 0:
+		temp &= ~((1<<1)+(1<<2));
+		break;
+	case 1:
+		temp |= (1<<1);
+		temp &= ~(1<<2);
+		break;
+	case 2:
+		temp &= ~(1<<1);
+		temp |= (1<<2);
+		break;
+	case 3:
+		temp |= (1<<1) + (1<<2);
+		break;
+	default:
+		break;
+
+	}
+
+
+	nrf_xfer(RF_SETUP, 1, &temp, W);
 
 	return 0;
 }
@@ -259,16 +342,33 @@ int nrf_set_speed(uint8_t speed)
 {
 	
 	uint8_t *val;
+	uint8_t temp;
 
 	if(speed > 2)
 		return -1;
 	
 	val = nrf_xfer(RF_SETUP, 1, NULL, R);
-	
-	speed = speed << 3;
-	speed = speed | val[0];
+	temp = val[0];
 
-	nrf_xfer(RF_SETUP, 1, &speed, W);
+	switch(speed){
+
+	case 0:
+		temp &= ~((1<<5)+(1<<3));
+		break;
+	case 1:
+		temp &= ~(1<<5);
+		temp |= (1<<3);
+		break;
+	case 2:
+		temp |= (1<<5);
+		temp &= ~(1<<3);
+		break;
+	default:
+		break;
+	}
+
+
+	nrf_xfer(RF_SETUP, 1, &temp, W);
 
 	return 0;
 }
@@ -349,9 +449,9 @@ int nrf_set_retrans_delay(uint8_t delay)
 
 int nrf_set_addr_width(uint8_t width)
 {
-	if(width == 0 && width > 5)
+	if(!(width > 2 || width < 6))
 		return -1;
-	
+	width = width - 2;
 	nrf_xfer(SETUP_AW, 1, &width, W);
 	return 0;
 }
@@ -379,7 +479,7 @@ void nrf_enable_pipes(uint8_t pipe)
  turns on data AA on pipe 0 & pipe 1
 ******************************/
 
-void nrf_set_AA(uint8_t pipe)
+void nrf_enable_AA(uint8_t pipe)
 {
 	nrf_xfer(EN_AA, 1, &pipe, W);
 }

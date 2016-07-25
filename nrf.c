@@ -81,8 +81,7 @@ static ssize_t nrf_write(struct file *fp, const char *data, size_t len, loff_t *
 /* Displays NRF module register info*/
 static ssize_t nrf_read(struct file *fp, char *buf, size_t len, loff_t *offset){
 	
-	//static int size = sizeof(nrf_reg)/sizeof(uint8_t);
-	uint8_t ret;
+	uint8_t *ret;
 	char s[64];
 	int loop;
 	int count=0;
@@ -93,9 +92,10 @@ static ssize_t nrf_read(struct file *fp, char *buf, size_t len, loff_t *offset){
 	
 	for(loop = 0; loop < 11; loop++){
 
-		ret = spi_w8r8(spi_device,nrf_reg[loop]);
+		//ret = spi_w8r8(spi_device,nrf_reg[loop]);
+		ret = nrf_xfer(nrf_reg[loop],1,NULL,R);
 		mdelay(10);
-		sprintf(s,"%s = 0x%02x\n",nrf_reg_name[loop],ret);
+		sprintf(s,"%s = 0x%02x\n",nrf_reg_name[loop],ret[0]);
 		if(copy_to_user(buf+count,s,strlen(s))){
 			return -EFAULT;
 		}
@@ -228,7 +228,6 @@ static int __init nrf_init(void)
 
 
 	radio_init();
-	nrf_set_speed(SPEED_250Kbps);
 
 	return 0;
 	
@@ -242,7 +241,7 @@ static int __init nrf_init(void)
 static void __exit nrf_exit(void)
 {
 	printk(KERN_ALERT "Bye from module!!\n");
-	
+	nrf_power_down();
 	spi_unregister_device(spi_device);
 	device_destroy(nrf_class,MKDEV(MAJOR(dev),0));
 	class_unregister(nrf_class);
